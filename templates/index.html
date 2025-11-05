@@ -3,139 +3,222 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OSC Web Interface</title>
+    <title>UDP Data Monitor</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
             color: #333;
+            min-height: 100vh;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            overflow: hidden;
+            padding: 20px;
         }
-        
-        .header {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            padding: 30px;
+
+        header {
             text-align: center;
+            margin-bottom: 30px;
+            color: white;
         }
-        
-        .header h1 {
-            margin: 0;
-            font-size: 2.5em;
-            font-weight: 300;
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
-        
-        .header p {
-            margin: 10px 0 0 0;
-            opacity: 0.9;
-        }
-        
-        .content {
-            padding: 30px;
-        }
-        
-        .status-card {
-            background: #f8f9fa;
+
+        .status-bar {
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
-            border-left: 4px solid #007bff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
-        
-        .data-card {
-            background: white;
-            border: 1px solid #e9ecef;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
         }
-        
-        .data-value {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #007bff;
-            margin: 10px 0;
-        }
-        
-        .timestamp {
-            color: #6c757d;
-            font-size: 0.9em;
-        }
-        
-        .history {
-            max-height: 300px;
-            overflow-y: auto;
-            background: #f8f9fa;
-            border-radius: 5px;
-            padding: 15px;
-        }
-        
-        .history-item {
-            padding: 8px;
-            border-bottom: 1px solid #dee2e6;
-            font-family: 'Courier New', monospace;
-        }
-        
-        .history-item:last-child {
-            border-bottom: none;
-        }
-        
-        .no-data {
-            color: #6c757d;
-            font-style: italic;
-        }
-        
-        .connection-status {
-            display: inline-block;
+
+        .status-dot {
             width: 12px;
             height: 12px;
             border-radius: 50%;
-            margin-right: 8px;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
         }
-        
-        .connected {
-            background: #28a745;
+
+        .status-dot.disconnected {
+            background: #f44336;
         }
-        
-        .disconnected {
-            background: #dc3545;
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
-        
-        .refresh-btn {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: transform 0.2s;
-        }
-        
-        .refresh-btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .grid {
+
+        .stats-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
         }
-        
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .messages-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .message-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .message-item:hover {
+            background: #e3f2fd;
+            transform: translateX(5px);
+        }
+
+        .message-header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .message-content {
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            margin-top: 8px;
+            word-break: break-all;
+        }
+
+        .message-type {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .type-text { background: #4CAF50; color: white; }
+        .type-binary { background: #2196F3; color: white; }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: #5a67d8;
+        }
+
+        .clear-btn {
+            background: #f44336;
+        }
+
+        .clear-btn:hover {
+            background: #da190b;
+        }
+
+        /* Scrollbar personalizzata */
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: #5a67d8;
+        }
+
         @media (max-width: 768px) {
-            .grid {
+            .container {
+                padding: 10px;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -143,134 +226,190 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>OSC Web Interface</h1>
-            <p>Monitoraggio dati OSC in tempo reale</p>
+        <header>
+            <h1>📡 UDP Data Monitor</h1>
+            <p>Monitoraggio dati UDP in tempo reale</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Connessione in corso...</span>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalMessages">0</div>
+                    <div class="stat-label">Messaggi Totali</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="textMessages">0</div>
+                    <div class="stat-label">Messaggi Testo</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="binaryMessages">0</div>
+                    <div class="stat-label">Messaggi Binari</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalBytes">0</div>
+                    <div class="stat-label">Bytes Totali</div>
+                </div>
+            </div>
         </div>
-        
-        <div class="content">
-            <div class="status-card">
-                <h2>Stato Connessione</h2>
-                <p>
-                    <span class="connection-status connected"></span>
-                    <span id="connection-status">Connesso al server OSC</span>
-                </p>
-                <p>Porta OSC: <strong>5005</strong></p>
-                <p>Server Web: <strong>http://localhost:5000</strong></p>
-            </div>
-            
-            <div class="grid">
-                <div class="data-card">
-                    <h2>Ultimo Messaggio Ricevuto</h2>
-                    <div id="last-message">
-                        <p class="no-data">Nessun dato ricevuto</p>
-                    </div>
-                    <p class="timestamp" id="last-timestamp"></p>
-                </div>
-                
-                <div class="data-card">
-                    <h2>Statistiche</h2>
-                    <p>Messaggi totali ricevuti: <strong id="total-messages">0</strong></p>
-                    <p>Ultimo aggiornamento: <span id="last-update">-</span></p>
-                    <button class="refresh-btn" onclick="fetchOSCData()">Aggiorna</button>
+
+        <div class="messages-container">
+            <div class="message-header">
+                <h2>Ultimi Messaggi UDP</h2>
+                <div class="controls">
+                    <button onclick="clearMessages()" class="clear-btn">Pulisci</button>
                 </div>
             </div>
             
-            <div class="data-card">
-                <h2>Cronologia Messaggi</h2>
-                <div class="history" id="message-history">
-                    <p class="no-data">Nessun messaggio nella cronologia</p>
+            <div class="message-list" id="messageList">
+                <div class="message-item" style="text-align: center; color: #666; font-style: italic;">
+                    In attesa di dati UDP...
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        let ws;
         let messageCount = 0;
-        
-        // Funzione per formattare i dati OSC
-        function formatOSCData(data) {
-            if (!data) return 'Nessun dato';
+        let textCount = 0;
+        let binaryCount = 0;
+        let totalBytes = 0;
+        let isConnected = false;
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.hostname}:8765`;
             
-            if (Array.isArray(data)) {
-                return data.map(arg => {
-                    if (typeof arg === 'number') {
-                        return arg.toFixed(3);
-                    }
-                    return String(arg);
-                }).join(', ');
-            }
-            
-            return String(data);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = function() {
+                console.log('Connesso al server WebSocket');
+                updateStatus(true, 'Connesso - In attesa di dati UDP');
+                isConnected = true;
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'udp_message') {
+                    handleUdpMessage(data.message);
+                } else if (data.type === 'history') {
+                    // Carica la cronologia
+                    data.messages.forEach(handleUdpMessage);
+                }
+            };
+
+            ws.onclose = function() {
+                console.log('Disconnesso dal server WebSocket');
+                updateStatus(false, 'Disconnesso - Tentativo di riconnessione...');
+                isConnected = false;
+                
+                // Tentativo di riconnessione
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = function(error) {
+                console.error('Errore WebSocket:', error);
+                updateStatus(false, 'Errore di connessione');
+            };
         }
-        
-        // Funzione per formattare il timestamp
-        function formatTimestamp(timestamp) {
-            if (!timestamp) return '';
+
+        function handleUdpMessage(message) {
+            messageCount++;
+            totalBytes += message.size;
             
-            const date = new Date(timestamp * 1000);
-            return date.toLocaleTimeString('it-IT') + '.' + 
-                   date.getMilliseconds().toString().padStart(3, '0');
-        }
-        
-        // Funzione per aggiornare l'interfaccia con i nuovi dati
-        function updateUI(data) {
-            // Aggiorna ultimo messaggio
-            const lastMessageDiv = document.getElementById('last-message');
-            if (data.last_message) {
-                lastMessageDiv.innerHTML = `
-                    <div class="data-value">${formatOSCData(data.last_message)}</div>
-                    <p>Indirizzo: <strong>${data.last_address || 'N/A'}</strong></p>
-                `;
+            if (message.data_type === 'text') {
+                textCount++;
+            } else {
+                binaryCount++;
             }
+
+            // Aggiorna le statistiche
+            updateStats();
             
-            // Aggiorna timestamp
-            document.getElementById('last-timestamp').textContent = 
-                data.last_timestamp ? formatTimestamp(data.last_timestamp) : '';
+            // Aggiungi il messaggio alla lista
+            addMessageToUI(message);
+        }
+
+        function addMessageToUI(message) {
+            const messageList = document.getElementById('messageList');
             
-            // Aggiorna statistiche
-            document.getElementById('total-messages').textContent = data.message_count || 0;
-            document.getElementById('last-update').textContent = new Date().toLocaleTimeString('it-IT');
-            
-            // Aggiorna cronologia
-            const historyDiv = document.getElementById('message-history');
-            if (data.history && data.history.length > 0) {
-                historyDiv.innerHTML = data.history.map(msg => `
-                    <div class="history-item">
-                        <strong>${msg.time_str}</strong> 
-                        ${msg.address} → [${formatOSCData(msg.args)}]
+            // Rimuovi il placeholder se presente
+            if (messageList.children.length === 1 && 
+                messageList.children[0].textContent.includes('In attesa')) {
+                messageList.innerHTML = '';
+            }
+
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message-item';
+            messageElement.innerHTML = `
+                <div class="message-header-info">
+                    <div>
+                        <span class="timestamp">${message.timestamp}</span>
+                        <span class="message-type ${message.data_type === 'text' ? 'type-text' : 'type-binary'}">
+                            ${message.data_type === 'text' ? 'TEXT' : 'BINARY'}
+                        </span>
                     </div>
-                `).reverse().join('');
+                    <div>
+                        <span class="source">${message.source_ip}:${message.source_port}</span>
+                        <span class="size">(${message.size} bytes)</span>
+                    </div>
+                </div>
+                <div class="message-content">
+                    ${message.content}
+                </div>
+            `;
+
+            // Aggiungi in cima
+            messageList.insertBefore(messageElement, messageList.firstChild);
+            
+            // Limita a 50 messaggi
+            if (messageList.children.length > 50) {
+                messageList.removeChild(messageList.lastChild);
             }
         }
-        
-        // Funzione per recuperare i dati OSC dal server
-        async function fetchOSCData() {
-            try {
-                const response = await fetch('/api/osc-data');
-                const data = await response.json();
-                updateUI(data);
-                
-                // Aggiorna lo stato della connessione
-                document.getElementById('connection-status').textContent = 
-                    'Connesso al server OSC';
-                document.querySelector('.connection-status').className = 
-                    'connection-status connected';
-                
-            } catch (error) {
-                console.error('Errore nel recupero dati:', error);
-                document.getElementById('connection-status').textContent = 
-                    'Errore di connessione';
-                document.querySelector('.connection-status').className = 
-                    'connection-status disconnected';
-            }
+
+        function updateStatus(connected, text) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            statusDot.classList.toggle('disconnected', !connected);
+            statusText.textContent = text;
         }
-        
-        // Aggiorna i dati ogni secondo
-        setInterval(fetchOSCData, 1000);
-        
-        // Carica i dati iniziali
-        fetchOSCData();
+
+        function updateStats() {
+            document.getElementById('totalMessages').textContent = messageCount;
+            document.getElementById('textMessages').textContent = textCount;
+            document.getElementById('binaryMessages').textContent = binaryCount;
+            document.getElementById('totalBytes').textContent = totalBytes;
+        }
+
+        function clearMessages() {
+            const messageList = document.getElementById('messageList');
+            messageList.innerHTML = '<div class="message-item" style="text-align: center; color: #666; font-style: italic;">In attesa di dati UDP...</div>';
+            
+            // Resetta contatori
+            messageCount = 0;
+            textCount = 0;
+            binaryCount = 0;
+            totalBytes = 0;
+            updateStats();
+        }
+
+        // Avvia la connessione
+        connectWebSocket();
+
+        // Aggiorna l'ora corrente periodicamente
+        setInterval(() => {
+            if (isConnected) {
+                updateStatus(true, 'Connesso - In attesa di dati UDP');
+            }
+        }, 1000);
     </script>
 </body>
 </html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSC Web Interface</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .data-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .data-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #007bff;
+            margin: 10px 0;
+        }
+        
+        .timestamp {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        
+        .history {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 5px;
+            padding: 15px;
+        }
+        
+        .history-item {
+            padding: 8px;
+            border-bottom: 1px solid #dee2e6;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .no-data {
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .connection-status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .connected {
+            background: #28a745;
+        }
+        
+        .disconnected {
+            background: #dc3545;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: transform 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>OSC Web Interface</h1>
+            <p>Monitoraggio dati OSC in tempo reale</p>
+        </div>
+        
+        <div class="content">
+            <div class="status-card">
+                <h2>Stato Connessione</h2>
+                <p>
+                    <span class="connection-status connected"></span>
+                    <span id="connection-status">Connesso al server OSC</span>
+                </p>
+                <p>Porta OSC: <strong>5005</strong></p>
+                <p>Server Web: <strong>http://localhost:5000</strong></p>
+            </div>
+            
+            <div class="grid">
+                <div class="data-card">
+                    <h2>Ultimo Messaggio Ricevuto</h2>
+                    <div id="last-message">
+                        <p class="no-data">Nessun dato ricevuto</p>
+                    </div>
+                    <p class="timestamp" id="last-timestamp"></p>
+                </div>
+                
+                <div class="data-card">
+                    <h2>Statistiche</h2>
+                    <p>Messaggi totali ricevuti: <strong id="total-messages">0</strong></p>
+                    <p>Ultimo aggiornamento: <span id="last-update">-</span></p>
+                    <button class="refresh-btn" onclick="fetchOSCData()">Aggiorna</button>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <h2>Cronologia Messaggi</h2>
+                <div class="history" id="message-history">
+                    <p class="no-data">Nessun messaggio nella cronologia</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let messageCount = 0;
+        
+        // Funzione per formattare i dati OSC
+        function formatOSCData(data) {
+            if (!data) return 'Nessun dato';
+            
+            if (Array.isArray(data)) {
+                return data.map(arg => {
+                    if (typeof arg === 'number') {
+                        return arg.toFixed(3);
+                    }
+                    return String(arg);
+                }).join(', ');
+            }
+            
+            return String(data);
+        }
+        
+        // Funzione per formattare il timestamp
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return '';
+            
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleTimeString('it-IT') + '.' + 
+                   date.getMilliseconds().toString().padStart(3, '0');
+        }
+        
+        // Funzione per aggiornare l'interfaccia con i nuovi dati
+        function updateUI(data) {
+            // Aggiorna ultimo messaggio
+            const lastMessageDiv = document.getElementById('last-message');
+            if (data.last_message) {
+                lastMessageDiv.innerHTML = `
+                    <div class="data-value">${formatOSCData(data.last_message)}</div>
+                    <p>Indirizzo: <strong>${data.last_address || 'N/A'}</strong></p>
+                `;
+            }
+            
+            // Aggiorna timestamp
+            document.getElementById('last-timestamp').textContent = 
+                data.last_timestamp ? formatTimestamp(data.last_timestamp) : '';
+            
+            // Aggiorna statistiche
+            document.getElementById('total-messages').textContent = data.message_count || 0;
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString('it-IT');
+            
+            // Aggiorna cronologia
+            const historyDiv = document.getElementById('message-history');
+            if (data.history && data.history.length > 0) {
+                historyDiv.innerHTML = data.history.map(msg => `
+                    <div class="history-item">
+                        <strong>${msg.time_str}</strong> 
+                        ${msg.address} → [${formatOSCData(msg.args)}]
+                    </div>
+                `).reverse().join('');
+            }
+        }
+        
+        // Funzione per recuperare i dati OSC dal server
+        async function fetchOSCData() {
+            try {
+                const response = await fetch('/api/osc-data');
+                const data = await response.json();
+                updateUI(data);
+                
+                // Aggiorna lo stato della connessione
+                document.getElementById('connection-status').textContent = 
+                    'Connesso al server OSC';
+                document.querySelector('.connection-status').className = 
+                    'connection-status connected';
+                
+            } catch (error) {
+                console.error('Errore nel recupero dati:', error);
+                document.getElementById('connection-status').textContent = 
+                    'Errore di connessione';
+                document.querySelector('.connection-status').className = 
+                    'connection-status disconnected';
+            }
+        }
+        
+        // Aggiorna i dati ogni secondo
+        setInterval(fetchOSCData, 1000);
+        
+        // Carica i dati iniziali
+        fetchOSCData();
+    </script>
+</body>
+</html>

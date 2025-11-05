@@ -43,19 +43,41 @@ This project provides a simple Python-based OSC (Open Sound Control) server desi
 
     The server is now ready to receive OSC data on port `5005`.
 
-## Sending Test Messages
+## Configurazione per Raspberry Pi
 
-You can use any OSC client to send messages to the server. Here are some examples:
+### Sul Raspberry Pi:
 
-- **TouchOSC:** A popular mobile app for sending OSC.
-- **Processing:** A creative coding environment with an OSC library.
-- **Max/MSP or Pure Data:** Visual programming languages for multimedia.
+1. **Trova l'indirizzo IP del Raspberry Pi:**
+   ```bash
+   hostname -I
+   ```
 
-When configuring your client, use the IP address of the device running the server (your Raspberry Pi) and the port `5005`.
+2. **Installa le dipendenze:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-For example, if your Raspberry Pi's IP address is `192.168.1.10`, you would send OSC messages to `192.168.1.10:5005`.
+3. **Avvia il server:**
+   ```bash
+   python app.py
+   ```
 
-Any message sent to any OSC address (e.g., `/test/message`, `/sensor/value`) will be printed in the console where the server is running.
+### Sul Windows (TouchDesigner/Altro):
+
+1. **Configura il client OSC per inviare a:**
+   ```
+   [IP_DEL_RASPBERRY]:10000
+   ```
+   
+   Esempio: se il Raspberry ha IP `192.168.1.100`, invia a `192.168.1.100:10000`
+
+2. **Assicurati che entrambi i dispositivi siano sulla stessa rete locale**
+
+### Verifica la connessione:
+
+- Il server OSC è in ascolto sulla porta **10000**
+- L'interfaccia web è disponibile su `http://[IP_DEL_RASPBERRY]:5000`
+- I dati OSC ricevuti vengono visualizzati in tempo reale nell'interfaccia web
 
 ## Customization
 

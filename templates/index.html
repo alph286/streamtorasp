@@ -161,6 +161,9 @@
 
         .type-text { background: #4CAF50; color: white; }
         .type-binary { background: #2196F3; color: white; }
+        .type-float { background: #FF9800; color: white; }
+        .type-int { background: #9C27B0; color: white; }
+        .type-double { background: #009688; color: white; }
 
         .controls {
             display: flex;
@@ -325,6 +328,8 @@
             
             if (message.data_type === 'text') {
                 textCount++;
+            } else if (['float','int','double'].includes(message.data_type)) {
+                textCount++;
             } else {
                 binaryCount++;
             }
@@ -351,8 +356,8 @@
                 <div class="message-header-info">
                     <div>
                         <span class="timestamp">${message.timestamp}</span>
-                        <span class="message-type ${message.data_type === 'text' ? 'type-text' : 'type-binary'}">
-                            ${message.data_type === 'text' ? 'TEXT' : 'BINARY'}
+                        <span class="message-type type-${message.data_type}">
+                            ${message.data_type.toUpperCase()}
                         </span>
                     </div>
                     <div>

@@ -10,10 +10,12 @@ import socket
 import json
 from datetime import datetime
 import threading
+import queue
 
 # Dati condivisi
 udp_messages = []
 clients = set()
+message_queue = queue.Queue()
 
 async def handle_websocket(websocket, path):
     """Gestisce le connessioni WebSocket"""
@@ -96,11 +98,8 @@ def udp_receiver_thread(udp_port=10000, interface='0.0.0.0'):
                 'message': udp_message
             }
             
-            # Usa asyncio per inviare nel thread principale
-            asyncio.run_coroutine_threadsafe(
-                broadcast_message(websocket_msg), 
-                asyncio.get_event_loop()
-            )
+            # Usa una coda thread-safe per inviare al thread principale
+            message_queue.put(websocket_msg)
             
             # Log sulla console
             print(f"[{timestamp}] UDP da {addr[0]}:{addr[1]} - {len(data)} bytes")
@@ -131,8 +130,23 @@ async def main():
     print("Interfaccia web disponibile su http://localhost:8000")
     print("-" * 50)
     
-    # Mantieni il server attivo
-    await server.wait_closed()
+    # Task per gestire i messaggi dalla coda
+    async def process_message_queue():
+        while True:
+            try:
+                # Controlla la coda senza bloccare
+                message = message_queue.get_nowait()
+                await broadcast_message(message)
+                message_queue.task_done()
+            except queue.Empty:
+                # Nessun messaggio in coda, aspetta un po'
+                await asyncio.sleep(0.1)
+    
+    # Esegui sia il server che il processamento della coda
+    await asyncio.gather(
+        server.wait_closed(),
+        process_message_queue()
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())

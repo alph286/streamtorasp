@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UDP Data Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .status-bar {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.disconnected {
+            background: #f44336;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .messages-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .message-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .message-item:hover {
+            background: #e3f2fd;
+            transform: translateX(5px);
+        }
+
+        .message-header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .message-content {
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            margin-top: 8px;
+            word-break: break-all;
+        }
+
+        .message-type {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .type-text { background: #4CAF50; color: white; }
+        .type-binary { background: #2196F3; color: white; }
+        .type-float { background: #FF9800; color: white; }
+        .type-int { background: #9C27B0; color: white; }
+        .type-double { background: #009688; color: white; }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: #5a67d8;
+        }
+
+        .clear-btn {
+            background: #f44336;
+        }
+
+        .clear-btn:hover {
+            background: #da190b;
+        }
+
+        /* Scrollbar personalizzata */
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: #5a67d8;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📡 UDP Data Monitor</h1>
+            <p>Monitoraggio dati UDP in tempo reale</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Connessione in corso...</span>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalMessages">0</div>
+                    <div class="stat-label">Messaggi Totali</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="textMessages">0</div>
+                    <div class="stat-label">Messaggi Testo</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="binaryMessages">0</div>
+                    <div class="stat-label">Messaggi Binari</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalBytes">0</div>
+                    <div class="stat-label">Bytes Totali</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="messages-container">
+            <div class="message-header">
+                <h2>Ultimi Messaggi UDP</h2>
+                <div class="controls">
+                    <button onclick="clearMessages()" class="clear-btn">Pulisci</button>
+                </div>
+            </div>
+            
+            <div class="message-list" id="messageList">
+                <div class="message-item" style="text-align: center; color: #666; font-style: italic;">
+                    In attesa di dati UDP...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let messageCount = 0;
+        let textCount = 0;
+        let binaryCount = 0;
+        let totalBytes = 0;
+        let isConnected = false;
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.hostname}:8765`;
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = function() {
+                console.log('Connesso al server WebSocket');
+                updateStatus(true, 'Connesso - In attesa di dati UDP');
+                isConnected = true;
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'udp_message') {
+                    handleUdpMessage(data.message);
+                } else if (data.type === 'history') {
+                    // Carica la cronologia
+                    data.messages.forEach(handleUdpMessage);
+                }
+            };
+
+            ws.onclose = function() {
+                console.log('Disconnesso dal server WebSocket');
+                updateStatus(false, 'Disconnesso - Tentativo di riconnessione...');
+                isConnected = false;
+                
+                // Tentativo di riconnessione
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = function(error) {
+                console.error('Errore WebSocket:', error);
+                updateStatus(false, 'Errore di connessione');
+            };
+        }
+
+        function handleUdpMessage(message) {
+            messageCount++;
+            totalBytes += message.size;
+            
+            if (message.data_type === 'text') {
+                textCount++;
+            } else if (['float','int','double'].includes(message.data_type)) {
+                textCount++;
+            } else {
+                binaryCount++;
+            }
+
+            // Aggiorna le statistiche
+            updateStats();
+            
+            // Aggiungi il messaggio alla lista
+            addMessageToUI(message);
+        }
+
+        function addMessageToUI(message) {
+            const messageList = document.getElementById('messageList');
+            
+            // Rimuovi il placeholder se presente
+            if (messageList.children.length === 1 && 
+                messageList.children[0].textContent.includes('In attesa')) {
+                messageList.innerHTML = '';
+            }
+
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message-item';
+            messageElement.innerHTML = `
+                <div class="message-header-info">
+                    <div>
+                        <span class="timestamp">${message.timestamp}</span>
+                        <span class="message-type type-${message.data_type}">
+                            ${message.data_type.toUpperCase()}
+                        </span>
+                    </div>
+                    <div>
+                        <span class="source">${message.source_ip}:${message.source_port}</span>
+                        <span class="size">(${message.size} bytes)</span>
+                    </div>
+                </div>
+                <div class="message-content">
+                    ${message.content}
+                </div>
+            `;
+
+            // Aggiungi in cima
+            messageList.insertBefore(messageElement, messageList.firstChild);
+            
+            // Limita a 50 messaggi
+            if (messageList.children.length > 50) {
+                messageList.removeChild(messageList.lastChild);
+            }
+        }
+
+        function updateStatus(connected, text) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            statusDot.classList.toggle('disconnected', !connected);
+            statusText.textContent = text;
+        }
+
+        function updateStats() {
+            document.getElementById('totalMessages').textContent = messageCount;
+            document.getElementById('textMessages').textContent = textCount;
+            document.getElementById('binaryMessages').textContent = binaryCount;
+            document.getElementById('totalBytes').textContent = totalBytes;
+        }
+
+        function clearMessages() {
+            const messageList = document.getElementById('messageList');
+            messageList.innerHTML = '<div class="message-item" style="text-align: center; color: #666; font-style: italic;">In attesa di dati UDP...</div>';
+            
+            // Resetta contatori
+            messageCount = 0;
+            textCount = 0;
+            binaryCount = 0;
+            totalBytes = 0;
+            updateStats();
+        }
+
+        // Avvia la connessione
+        connectWebSocket();
+
+        // Aggiorna l'ora corrente periodicamente
+        setInterval(() => {
+            if (isConnected) {
+                updateStatus(true, 'Connesso - In attesa di dati UDP');
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
